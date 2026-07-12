@@ -1,0 +1,12 @@
+# Global CODEOWNERS (handbook SECTION 22)
+
+* @sentinel-shield/engineering
+
+/packages/shared-types/ @sentinel-shield/platform
+/packages/core/ @sentinel-shield/platform
+/packages/browser-adapters/ @sentinel-shield/extension
+/packages/detection-engine/ @sentinel-shield/detection @sentinel-shield/security
+/packages/extension/ @sentinel-shield/extension @sentinel-shield/security
+/tools/ @sentinel-shield/devops
+/.github/ @sentinel-shield/devops
+/blueprint/ @sentinel-shield/architecture

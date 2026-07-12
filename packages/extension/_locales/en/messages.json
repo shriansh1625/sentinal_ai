@@ -1,0 +1,54 @@
+{
+  "extensionName": {
+    "message": "Sentinel Shield AI",
+    "description": "Extension name (CWS / toolbar)."
+  },
+  "extensionDescription": {
+    "message": "Local privacy assistant for supported AI sites. Intercepts paste/upload/drag-drop; warn, allow, block, or redact.",
+    "description": "Manifest short description (≤132 chars). Ownership Matrix §4 framing."
+  },
+  "overlay_title_block": {
+    "message": "Blocked sensitive content",
+    "description": "Overlay headline when decision is BLOCK."
+  },
+  "overlay_title_redact": {
+    "message": "Redaction available",
+    "description": "Overlay headline when redaction is offered."
+  },
+  "overlay_title_hold": {
+    "message": "Review before sending",
+    "description": "Overlay headline for HOLD/warn."
+  },
+  "a11y_overlay_live_prefix": {
+    "message": "Sentinel Shield warning.",
+    "description": "Assertive live-region prefix when overlay opens."
+  },
+  "action_allow": {
+    "message": "Allow once",
+    "description": "Allow action button."
+  },
+  "action_block": {
+    "message": "Block",
+    "description": "Block action button (safe default)."
+  },
+  "action_redact": {
+    "message": "Redact & allow",
+    "description": "Redact and continue action."
+  },
+  "a11y_decision_actions": {
+    "message": "Decision actions",
+    "description": "aria-label for overlay action group."
+  },
+  "popup_open_settings": {
+    "message": "Open settings",
+    "description": "Popup link to options page."
+  },
+  "popup_platforms_heading": {
+    "message": "AI platforms",
+    "description": "Popup platforms group heading."
+  },
+  "options_intro": {
+    "message": "Local settings. Telemetry and history stay off unless you enable them.",
+    "description": "Options page intro copy."
+  }
+}

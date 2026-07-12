@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sentinel Shield — AI compose fixture</title>
+    <style>
+      body {
+        font: 16px/1.4 system-ui, sans-serif;
+        margin: 24px;
+        background: #f6f7f5;
+        color: #122;
+      }
+      #composer {
+        width: min(640px, 100%);
+        min-height: 120px;
+        padding: 12px;
+      }
+      #drop-zone {
+        margin-top: 16px;
+        padding: 24px;
+        border: 2px dashed #456;
+        width: min(640px, 100%);
+      }
+      #event-log {
+        margin-top: 16px;
+        white-space: pre-wrap;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Local AI compose fixture</h1>
+    <p>Stand-in for ChatGPT/Claude/Gemini paste surfaces (Phase 9 / Freeze G3 residual).</p>
+    <textarea id="composer" aria-label="Composer" placeholder="Paste here…"></textarea>
+    <div>
+      <label>Upload <input id="file-input" type="file" /></label>
+    </div>
+    <div id="drop-zone" tabindex="0">Drop files here</div>
+    <div id="event-log" role="status" aria-live="polite"></div>
+    <script>
+      const log = document.getElementById('event-log');
+      const note = (msg) => {
+        log.textContent += msg + '\n';
+      };
+      document.getElementById('composer').addEventListener('paste', () => note('paste'));
+      document.getElementById('file-input').addEventListener('change', () => note('file-change'));
+      const zone = document.getElementById('drop-zone');
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        note('dragover');
+      });
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        note('drop');
+      });
+    </script>
+  </body>
+</html>

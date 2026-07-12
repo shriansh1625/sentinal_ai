@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "extensionIdPlaceholder": "ASSIGN_ON_CWS_PUBLISH",
+  "packageVersion": "0.2.1",
+  "singlePurpose": "Local on-device scanning of paste/upload/drag-drop on user-enabled AI chat sites to warn and allow allow/block/redact.",
+  "storesPersonalData": false,
+  "persistsRawPii": false,
+  "telemetryDefault": false,
+  "historyDefault": false,
+  "remoteCode": false,
+  "detectionNetwork": false,
+  "permissions": ["storage", "activeTab", "scripting", "offscreen", "alarms"],
+  "optionalHostPermissionsPolicy": "AI_HOST_PERMISSIONS_ONLY",
+  "privacyPolicyUrl": "PENDING_COUNSEL_URL",
+  "cwsPrivacyPractices": {
+    "personallyIdentifiableInformation": "not_collected_durable",
+    "healthInfo": "not_collected_durable",
+    "financialAndPaymentInfo": "not_collected_durable",
+    "authenticationInformation": "not_collected_durable",
+    "personalCommunications": "not_collected",
+    "location": "not_collected",
+    "webHistory": "not_collected",
+    "userActivity": "optional_opt_in_local_only",
+    "websiteContent": "processed_locally_ephemeral"
+  },
+  "limitationsDisclosed": [
+    "Cannot intercept navigator.clipboard.readText() by the page in v1",
+    "OCR requires vendored WASM; missing assets fail closed",
+    "Does not claim to block all leaks"
+  ],
+  "counselSignOffRequiredBeforePublicLaunch": true
+}

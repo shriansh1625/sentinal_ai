@@ -1,0 +1,17 @@
+{
+  "assets": [
+    {
+      "id": "tesseract-core",
+      "path": "public/wasm/tesseract-core.wasm",
+      "sha256": "",
+      "optional": true,
+      "note": "Vendor pinned WASM before CWS; empty sha fails closed (PART_16)"
+    },
+    {
+      "id": "pdf-extract",
+      "path": "public/wasm/pdf-extract.wasm",
+      "sha256": "",
+      "optional": true
+    }
+  ]
+}

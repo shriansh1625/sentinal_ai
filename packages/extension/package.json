@@ -1,0 +1,28 @@
+{
+  "name": "@sentinel-shield/extension",
+  "version": "0.2.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --config vite.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "test": "vitest run --config vitest.config.ts",
+    "verify:bundle": "node ./scripts/verify-bundle.mjs"
+  },
+  "dependencies": {
+    "@sentinel-shield/browser-adapters": "workspace:*",
+    "@sentinel-shield/core": "workspace:*",
+    "@sentinel-shield/detection-engine": "workspace:*",
+    "@sentinel-shield/shared-types": "workspace:*",
+    "lit": "^3.2.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "axe-core": "^4.12.1",
+    "happy-dom": "^20.10.6",
+    "typescript": "^5.7.2",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
+  }
+}

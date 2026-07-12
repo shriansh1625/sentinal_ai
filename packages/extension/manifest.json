@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extensionName__",
+  "version": "0.2.1",
+  "description": "__MSG_extensionDescription__",
+  "default_locale": "en",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "activeTab", "scripting", "offscreen", "alarms"],
+  "optional_host_permissions": [
+    "*://chat.openai.com/*",
+    "*://chatgpt.com/*",
+    "*://gemini.google.com/*",
+    "*://claude.ai/*",
+    "*://chat.deepseek.com/*",
+    "*://perplexity.ai/*",
+    "*://grok.com/*",
+    "*://x.com/i/grok*",
+    "*://copilot.microsoft.com/*",
+    "*://github.com/copilot*",
+    "*://cursor.sh/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "__MSG_extensionName__",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "public/icons/icon-16.png",
+      "32": "public/icons/icon-32.png",
+      "48": "public/icons/icon-48.png",
+      "128": "public/icons/icon-128.png"
+    }
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "public/icons/icon-16.png",
+    "32": "public/icons/icon-32.png",
+    "48": "public/icons/icon-48.png",
+    "128": "public/icons/icon-128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["public/models/*", "public/wasm/*", "offscreen.html"],
+      "matches": [
+        "*://chat.openai.com/*",
+        "*://chatgpt.com/*",
+        "*://gemini.google.com/*",
+        "*://claude.ai/*",
+        "*://chat.deepseek.com/*",
+        "*://perplexity.ai/*",
+        "*://grok.com/*",
+        "*://x.com/*",
+        "*://copilot.microsoft.com/*",
+        "*://github.com/*",
+        "*://cursor.sh/*"
+      ]
+    }
+  ]
+}

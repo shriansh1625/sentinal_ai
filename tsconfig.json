@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared-types" },
+    { "path": "packages/core" },
+    { "path": "packages/browser-adapters" },
+    { "path": "packages/detection-engine" },
+    { "path": "packages/extension" }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "certifiedAt": "2026-07-12",
+  "packageVersion": "0.2.1",
+  "engineeringVerdict": "GO_CERTIFIED_RC",
+  "publicProductionVerdict": "NO_GO",
+  "freezeVersion": "1.0",
+  "gates": {
+    "G0_perf": "PASS_WITH_FINDINGS",
+    "G1_sec": "PASS_WITH_FINDINGS",
+    "G2_priv": "PASS",
+    "G3_e2e": "FAIL_PUBLIC_CONDITIONAL_ENG",
+    "G4_claims": "PASS",
+    "G5_freeze": "PASS"
+  },
+  "publicBlockers": ["G3", "KI-006", "KI-018", "KI-001"],
+  "softResiduals": ["KI-002", "KI-014", "KI-017", "KI-012"],
+  "authorizesCwsPublish": false,
+  "authorizesLoadUnpackedBeta": true
+}

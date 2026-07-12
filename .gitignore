@@ -1,0 +1,50 @@
+# Dependencies & package managers
+node_modules/
+
+# Build outputs
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crx
+id_rsa
+id_rsa.pub
+
+# Archives / packaged extension artifacts
+*.zip
+*.crx
+
+# Test & coverage artifacts
+coverage/
+playwright-report/
+test-results/
+screenshots/
+logs/
+*.log
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local Playwright / e2e profile junk
+test-results/
+**/ext-profile-*/
+
+# Generated CWS engineering screenshot binaries (keep README)
+store/assets/*.png
+store/assets/*.jpg
+store/assets/*.jpeg
+store/assets/*.webp

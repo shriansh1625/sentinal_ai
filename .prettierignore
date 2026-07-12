@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+*.tsbuildinfo
+.turbo
+pnpm-lock.yaml
+blueprint
+handbook
+implementation_plan.md

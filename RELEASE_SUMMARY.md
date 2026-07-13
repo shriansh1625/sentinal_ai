@@ -21,19 +21,20 @@
 
 ## Latest Commit
 
-| Field                 | Value                                                        |
-| --------------------- | ------------------------------------------------------------ |
-| SHA                   | `f7dbacb`                                                    |
-| Message               | `chore: finalize internal beta engineering milestone v0.3.0` |
-| Parent milestone base | `bf21ed2`                                                    |
+| Field                 | Value                                                |
+| --------------------- | ---------------------------------------------------- |
+| SHA                   | `f5a0cad`                                            |
+| Message               | `docs: add release summary for v0.3.0 internal beta` |
+| Parent milestone base | `bf21ed2`                                            |
 
-### Commits in this release (5)
+### Commits in this release (6)
 
 1. `902c95f` — feat(detection): catalog research, Phase C preprocess, eval and red-team harnesses
 2. `bdee1d8` — fix(extension): security hardening, scan rate limiter, and gap closure
 3. `0647186` — docs: add engineering evaluation, validation, and gap closure reports
 4. `3fdc546` — docs: add engineering mastery artifacts and whitepaper
 5. `f7dbacb` — chore: finalize internal beta engineering milestone v0.3.0
+6. `f5a0cad` — docs: add release summary for v0.3.0 internal beta
 
 ---
 

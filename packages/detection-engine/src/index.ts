@@ -4,7 +4,9 @@
  */
 
 export const DETECTION_ENGINE_PACKAGE = '@sentinel-shield/detection-engine' as const;
+/** Research library expansion — catalog-driven Tier-1 (Engineering Excellence Phase A). */
 export const DETECTION_ENGINE_SPRINT = 3 as const;
+export const DETECTION_RESEARCH_CATALOG_MIN = 100 as const;
 
 export {
   Tier1DetectionEngine,
@@ -44,6 +46,19 @@ export {
   normalizeForDetection,
   stripZeroWidth,
   resolveSimpleStringConcat,
+  collapseSpacedAlphanumerics,
+  joinBrokenAlnumLines,
+  decodeBasicHtmlEntities,
 } from './preprocess/normalize.js';
 export { decideAction } from './policy/decide.js';
 export { runThreatSimulation, THREAT_CASES, type ThreatCase } from './security/threat-sim.js';
+export {
+  DETECTOR_CATALOG,
+  getDetectorById,
+  assertCatalogIntegrity,
+  type DetectorSpec,
+  type DetectorCategory,
+  type DetectorSeverity,
+  type EntropyPolicy,
+} from './research/index.js';
+export { findCatalogSpans } from './research/matcher.js';

@@ -11,6 +11,7 @@ import { scoreRisk } from './risk/score.js';
 import { decideAction } from './policy/decide.js';
 import { prepareForDetection } from './preprocess/normalize.js';
 import { collectBase64Spans } from './preprocess/base64.js';
+import { collectHexSpans } from './preprocess/hex.js';
 
 export interface TextScanInput {
   readonly requestId: string;
@@ -53,7 +54,10 @@ export class Tier1DetectionEngine implements DetectionEngine {
     const fromBase64 = collectBase64Spans(prepared, (decoded) =>
       scanPreparedLayer(prepareForDetection(decoded)),
     );
-    const merged = mergeSpans([...direct, ...fromBase64]);
+    const fromHex = collectHexSpans(prepared, (decoded) =>
+      scanPreparedLayer(prepareForDetection(decoded)),
+    );
+    const merged = mergeSpans([...direct, ...fromBase64, ...fromHex]);
     const validated = enrichWithChecksums(prepared, merged);
     const riskLevel = scoreRisk(validated);
     const action = decideAction(riskLevel);

@@ -64,6 +64,44 @@ export function applyHomoglyphMap(text: string): string {
 }
 
 /**
+ * Collapse space/tab-separated single alphanumerics (RT whitespace chunking).
+ * Example: "A K I A I O S F…" → "AKIAIOSF…"
+ */
+export function collapseSpacedAlphanumerics(text: string): string {
+  // Include _ and - so keys like s k - a b c … defrag (RT-SPACE / RT-TAB).
+  return text.replace(/(?:[A-Za-z0-9_-][ \t]+){7,}[A-Za-z0-9_-]/g, (chunk) =>
+    chunk.replace(/[ \t]+/g, ''),
+  );
+}
+
+/**
+ * Join alphanumeric tokens split by a single line break (RT mid-secret newline).
+ * Bounded: only when both sides are ≥6 alnum chars (avoids joining prose words).
+ */
+export function joinBrokenAlnumLines(text: string): string {
+  let previous = '';
+  let current = text;
+  for (let i = 0; i < 8 && current !== previous; i += 1) {
+    previous = current;
+    current = current.replace(/([A-Za-z0-9]{6,})[\r\n]+([A-Za-z0-9]{6,})/g, '$1$2');
+  }
+  return current;
+}
+
+/** Decode numeric HTML entities (&#NNN; / &#xHH;) — RT HTML entity evasion. */
+export function decodeBasicHtmlEntities(text: string): string {
+  return text
+    .replace(/&#x([0-9a-fA-F]{1,6});/g, (_m, hex: string) => {
+      const code = Number.parseInt(hex, 16);
+      return Number.isFinite(code) && code > 0 && code < 0x10ffff ? String.fromCodePoint(code) : _m;
+    })
+    .replace(/&#([0-9]{1,7});/g, (_m, dec: string) => {
+      const code = Number.parseInt(dec, 10);
+      return Number.isFinite(code) && code > 0 && code < 0x10ffff ? String.fromCodePoint(code) : _m;
+    });
+}
+
+/**
  * Normalize for detection: strip invisible chars → NFKD → homoglyph map.
  */
 export function normalizeForDetection(text: string): string {
@@ -79,7 +117,6 @@ export function normalizeForDetection(text: string): string {
 export function resolveSimpleStringConcat(text: string): string {
   let previous = '';
   let current = text;
-  // Iterate until stable (bounded) to avoid pathological loops
   for (let i = 0; i < 8 && current !== previous; i += 1) {
     previous = current;
     current = current.replace(
@@ -91,5 +128,9 @@ export function resolveSimpleStringConcat(text: string): string {
 }
 
 export function prepareForDetection(text: string): string {
-  return resolveSimpleStringConcat(normalizeForDetection(text));
+  const normalized = normalizeForDetection(text);
+  const entities = decodeBasicHtmlEntities(normalized);
+  const spaced = collapseSpacedAlphanumerics(entities);
+  const joined = joinBrokenAlnumLines(spaced);
+  return resolveSimpleStringConcat(joined);
 }

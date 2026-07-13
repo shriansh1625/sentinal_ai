@@ -29,4 +29,23 @@ describe('PART_19 encrypted storage', () => {
     expect(raw?.includes('version')).toBe(false);
     expect(await secure.get<{ version: number }>('appSettings')).toEqual({ version: 1 });
   });
+
+  it('recovers when session key is lost (extension reload)', async () => {
+    const backing = new MemoryKvStorage();
+    const session = new MemorySessionKeyStore();
+    const first = new EncryptedKvStorage(backing, session);
+    await first.initialize();
+    await first.set('appSettings', { version: 1, ok: true });
+
+    // Simulate chrome.storage.session wipe on Developer Mode reload.
+    await session.clear();
+    const second = new EncryptedKvStorage(backing, session);
+    await second.initialize();
+    expect(await second.get('appSettings')).toBeUndefined();
+    await second.set('appSettings', { version: 1, recovered: true });
+    expect(await second.get<{ recovered: boolean }>('appSettings')).toEqual({
+      version: 1,
+      recovered: true,
+    });
+  });
 });

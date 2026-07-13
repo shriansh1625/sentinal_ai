@@ -39,7 +39,8 @@ describe('Phase 10 — production certification artifacts', () => {
     expect(status.publicProductionVerdict).toBe('NO_GO');
     expect(status.authorizesCwsPublish).toBe(false);
     expect(status.authorizesLoadUnpackedBeta).toBe(true);
-    expect(status.publicBlockers).toEqual(expect.arrayContaining(['G3', 'KI-018', 'KI-001']));
+    expect(status.publicBlockers).toEqual(expect.arrayContaining(['G3', 'KI-018', 'KI-006']));
+    expect(status.publicBlockers).not.toContain('KI-001');
     expect(status.gates['G4_claims']).toBe('PASS');
     expect(status.gates['G5_freeze']).toBe('PASS');
     expect(status.gates['G3_e2e']).toMatch(/FAIL_PUBLIC/);
@@ -87,11 +88,12 @@ describe('Phase 10 — Freeze G0–G5 evidence anchors', () => {
     }
   });
 
-  it('KI-001 / KI-018 remain acknowledged blockers in KNOWN_ISSUES', () => {
+  it('KI-018 public blocker and KI-001 closure are acknowledged in KNOWN_ISSUES', () => {
     const known = readFileSync(join(repoRoot, 'KNOWN_ISSUES.md'), 'utf8');
     expect(known).toMatch(/KI-001/);
-    expect(known).toMatch(/zero commits/i);
+    expect(known).toMatch(/Closed/i);
     expect(known).toMatch(/KI-018/);
     expect(known).toMatch(/Privacy policy|counsel/i);
+    expect(known).toMatch(/PENDING_COUNSEL_URL|counsel-approved privacy/i);
   });
 });

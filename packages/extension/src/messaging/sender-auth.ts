@@ -1,12 +1,12 @@
 /**
  * IPC sender authorization — PART_14 / PART_06 TB-3.
- * Privileged mutations must originate from extension pages (no tab),
- * not from content scripts or untrusted web contexts.
+ * Privileged mutations must originate from extension pages (popup/options/SW),
+ * not from content scripts on https AI hosts.
  */
 
 import { MessageType } from '@sentinel-shield/shared-types';
 
-/** Messages that may only be sent from extension UI / SW (no sender.tab). */
+/** Messages that may only be sent from extension UI / SW. */
 export const PRIVILEGED_MESSAGE_TYPES: ReadonlySet<MessageType> = new Set([
   MessageType.CONFIG_SET,
   MessageType.PLATFORM_ENABLE,
@@ -23,18 +23,21 @@ export const TAB_SCOPED_MESSAGE_TYPES: ReadonlySet<MessageType> = new Set([
 export type SenderAuthResult =
   { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
+function isExtensionPageUrl(url: string | undefined): boolean {
+  return typeof url === 'string' && url.startsWith('chrome-extension://');
+}
+
 export function authorizeMessageSender(
   type: MessageType,
   sender: chrome.runtime.MessageSender,
 ): SenderAuthResult {
   const fromTab = typeof sender.tab?.id === 'number';
-  const fromExtensionPage =
-    typeof sender.id === 'string' ||
-    (typeof sender.url === 'string' && sender.url.startsWith('chrome-extension://')) ||
-    (!fromTab && sender.tab === undefined);
+  const fromExtensionPage = isExtensionPageUrl(sender.url);
 
   if (PRIVILEGED_MESSAGE_TYPES.has(type)) {
-    if (fromTab) {
+    // Options/popup opened as a Chrome tab still have sender.tab, but url is
+    // chrome-extension://… — allow those. Reject real https content scripts.
+    if (fromTab && !fromExtensionPage) {
       return {
         ok: false,
         reason: 'Privileged IPC rejected from tab/content-script sender (PART_14)',
@@ -55,7 +58,5 @@ export function authorizeMessageSender(
     return { ok: true };
   }
 
-  // Read-only / health: any extension context
-  void fromExtensionPage;
   return { ok: true };
 }

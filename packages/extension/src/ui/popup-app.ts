@@ -1,16 +1,28 @@
 /**
  * Lit popup — ADR-034 / PART_22.
- * Platform enable uses chrome.permissions.request via SW (ADR-035).
+ * Host permissions MUST be requested in this page on the user gesture (PART_15).
+ * The service worker only persists enablement + registers content scripts.
  */
 
 import { LitElement, css, html } from 'lit';
-import { AI_PLATFORMS, MessageType, type HealthCheckResult } from '@sentinel-shield/shared-types';
+import {
+  AI_PLATFORMS,
+  MessageType,
+  getPlatform,
+  type HealthCheckResult,
+} from '@sentinel-shield/shared-types';
 import { createEnvelope } from '@sentinel-shield/browser-adapters';
 import { t } from './i18n.js';
 
 function isOkData<T>(value: unknown): value is { ok: true; data: T } {
   if (typeof value !== 'object' || value === null) return false;
   return (value as { ok?: unknown }).ok === true;
+}
+
+function responseError(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const error = (value as { error?: unknown }).error;
+  return typeof error === 'string' ? error : null;
 }
 
 export class SentinelPopup extends LitElement {
@@ -121,15 +133,42 @@ export class SentinelPopup extends LitElement {
     void this.refresh();
   }
 
+  private async sendToServiceWorker(envelope: unknown): Promise<unknown> {
+    const delaysMs = [0, 50, 100, 200, 400];
+    let lastError: unknown;
+    for (const delay of delaysMs) {
+      if (delay > 0) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, delay);
+        });
+      }
+      try {
+        return await chrome.runtime.sendMessage(envelope);
+      } catch (cause) {
+        lastError = cause;
+        const message = cause instanceof Error ? cause.message : String(cause);
+        const swWaking =
+          message.includes('Receiving end does not exist') ||
+          message.includes('Could not establish connection');
+        if (!swWaking) {
+          throw cause;
+        }
+      }
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('Could not reach extension service worker');
+  }
+
   private async refresh(): Promise<void> {
     try {
       const healthEnv = createEnvelope(MessageType.HEALTH_CHECK, {});
-      const healthRes: unknown = await chrome.runtime.sendMessage(healthEnv);
+      const healthRes: unknown = await this.sendToServiceWorker(healthEnv);
       if (isOkData<HealthCheckResult>(healthRes)) {
         this.health = healthRes.data;
       }
       const listEnv = createEnvelope(MessageType.PLATFORM_LIST, {});
-      const listRes: unknown = await chrome.runtime.sendMessage(listEnv);
+      const listRes: unknown = await this.sendToServiceWorker(listEnv);
       if (isOkData<string[]>(listRes)) {
         this.enabled = listRes.data;
       }
@@ -139,20 +178,54 @@ export class SentinelPopup extends LitElement {
     }
   }
 
-  private async togglePlatform(platformId: string, checked: boolean): Promise<void> {
+  private async togglePlatform(
+    platformId: string,
+    checked: boolean,
+    input: HTMLInputElement,
+  ): Promise<void> {
+    const platform = getPlatform(platformId);
     try {
+      // PART_15: chrome.permissions.request must run here on the gesture —
+      // calling it from the service worker after sendMessage always fails.
+      if (checked) {
+        if (!platform) {
+          input.checked = false;
+          this.error = `Unknown platform: ${platformId}`;
+          return;
+        }
+        const granted = await chrome.permissions.request({
+          origins: [...platform.urlPatterns],
+        });
+        if (!granted) {
+          input.checked = false;
+          this.error =
+            'Host permission denied. When Chrome asks, click Allow so Sentinel can protect this site.';
+          this.status = '';
+          await this.refresh();
+          return;
+        }
+      }
+
       const type = checked ? MessageType.PLATFORM_ENABLE : MessageType.PLATFORM_DISABLE;
       const envelope = createEnvelope(type, { platformId });
-      const response: unknown = await chrome.runtime.sendMessage(envelope);
+      const response: unknown = await this.sendToServiceWorker(envelope);
       if (!isOkData(response)) {
-        this.error = checked ? 'Permission denied or enable failed' : 'Disable failed';
+        input.checked = !checked;
+        const detail = responseError(response);
+        this.error = checked
+          ? (detail ?? 'Enable failed after permission grant')
+          : (detail ?? 'Disable failed');
+        await this.refresh();
         return;
       }
-      this.status = checked ? `Enabled ${platformId}` : `Disabled ${platformId}`;
+      const label = platform?.displayName ?? platformId;
+      this.status = checked ? `Enabled ${label}` : `Disabled ${label}`;
       this.error = null;
       await this.refresh();
     } catch (cause) {
+      input.checked = !checked;
       this.error = cause instanceof Error ? cause.message : 'Toggle failed';
+      await this.refresh();
     }
   }
 
@@ -190,8 +263,10 @@ export class SentinelPopup extends LitElement {
                   <input
                     type="checkbox"
                     .checked=${enabledSet.has(p.id)}
-                    @change=${(e: Event) =>
-                      void this.togglePlatform(p.id, (e.target as HTMLInputElement).checked)}
+                    @change=${(e: Event) => {
+                      const input = e.target as HTMLInputElement;
+                      void this.togglePlatform(p.id, input.checked, input);
+                    }}
                   />
                   ${p.displayName}
                 </label>

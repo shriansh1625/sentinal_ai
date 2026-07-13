@@ -51,6 +51,15 @@ for (const file of collectJsFiles(dist)) {
     failed = true;
   }
   if (
+    rel === 'content.js' &&
+    (/^\s*import\s/m.test(source) || source.includes(' from "./chunks/'))
+  ) {
+    console.error(
+      'content.js must be a classic IIFE (no ES imports) — Chrome content scripts cannot load modules',
+    );
+    failed = true;
+  }
+  if (
     source.includes('axe-core') ||
     /\/\*!\s*axe/i.test(source) ||
     /(^|\/)axe-[^/]+\.js$/i.test(rel)

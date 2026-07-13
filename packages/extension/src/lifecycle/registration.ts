@@ -31,12 +31,18 @@ export interface ScriptingApi {
   getRegisteredContentScripts(filter?: {
     ids?: string[];
   }): Promise<chrome.scripting.RegisteredContentScript[]>;
+  executeScript?: (injection: { target: { tabId: number }; files: string[] }) => Promise<unknown>;
+}
+
+export interface TabsApi {
+  query(queryInfo: { url?: string | string[] }): Promise<Array<{ id?: number | undefined }>>;
 }
 
 export async function registerEnabledPlatforms(
   storage: KvStorage,
   scripting: ScriptingApi,
   logger: Logger,
+  tabsApi?: TabsApi,
 ): Promise<void> {
   const enabled = await listEnabledPlatforms(storage);
   const existing = await scripting.getRegisteredContentScripts();
@@ -64,8 +70,49 @@ export async function registerEnabledPlatforms(
         world: 'ISOLATED',
       },
     ]);
+    await injectIntoOpenTabs(platform.urlPatterns, scripting, logger, tabsApi);
   }
   logger.info('platform scripts registered', { count: enabled.length });
+}
+
+/**
+ * registerContentScripts only affects future navigations. PART_15 also injects
+ * into already-open matching tabs so protection starts without a manual refresh.
+ */
+async function injectIntoOpenTabs(
+  urlPatterns: readonly string[],
+  scripting: ScriptingApi,
+  logger: Logger,
+  tabsApi?: TabsApi,
+): Promise<void> {
+  if (!scripting.executeScript || !tabsApi) {
+    return;
+  }
+  let tabs: Array<{ id?: number | undefined }> = [];
+  try {
+    tabs = await tabsApi.query({ url: [...urlPatterns] });
+  } catch (cause) {
+    logger.warn('tab query for injection failed', {
+      message: cause instanceof Error ? cause.message : 'unknown',
+    });
+    return;
+  }
+  for (const tab of tabs) {
+    if (typeof tab.id !== 'number') {
+      continue;
+    }
+    try {
+      await scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js'],
+      });
+    } catch (cause) {
+      logger.warn('content script inject into open tab failed', {
+        tabId: tab.id,
+        message: cause instanceof Error ? cause.message : 'unknown',
+      });
+    }
+  }
 }
 
 export interface PermissionsApi {
@@ -75,8 +122,9 @@ export interface PermissionsApi {
 }
 
 /**
- * Request optional host permissions then register content scripts (ADR-035).
- * Must be called from a user gesture (popup/options).
+ * Persist platform enablement and register content scripts (ADR-035 / PART_15).
+ * Host permission must already be granted from a user-gesture context (popup).
+ * `permissionsApi.request` is only a fallback for tests / already-granted paths.
  */
 export async function enablePlatform(
   storage: KvStorage,
@@ -84,6 +132,7 @@ export async function enablePlatform(
   logger: Logger,
   platformId: string,
   permissionsApi?: PermissionsApi,
+  tabsApi?: TabsApi,
 ): Promise<void> {
   const platform = getPlatform(platformId);
   if (!platform) {
@@ -91,15 +140,18 @@ export async function enablePlatform(
   }
   if (permissionsApi) {
     const origins = [...platform.urlPatterns];
-    const granted = await permissionsApi.request({ origins });
-    if (!granted) {
-      throw new Error(`Host permission denied for ${platformId}`);
+    const already = await permissionsApi.contains({ origins });
+    if (!already) {
+      const granted = await permissionsApi.request({ origins });
+      if (!granted) {
+        throw new Error(`Host permission denied for ${platformId}`);
+      }
     }
   }
   const enabled = new Set(await listEnabledPlatforms(storage));
   enabled.add(platformId);
   await setEnabledPlatforms(storage, [...enabled]);
-  await registerEnabledPlatforms(storage, scripting, logger);
+  await registerEnabledPlatforms(storage, scripting, logger, tabsApi);
 }
 
 export async function disablePlatform(
@@ -107,8 +159,9 @@ export async function disablePlatform(
   scripting: ScriptingApi,
   logger: Logger,
   platformId: string,
+  tabsApi?: TabsApi,
 ): Promise<void> {
   const enabled = (await listEnabledPlatforms(storage)).filter((id) => id !== platformId);
   await setEnabledPlatforms(storage, enabled);
-  await registerEnabledPlatforms(storage, scripting, logger);
+  await registerEnabledPlatforms(storage, scripting, logger, tabsApi);
 }

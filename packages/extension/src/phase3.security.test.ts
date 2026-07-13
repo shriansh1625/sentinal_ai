@@ -11,7 +11,9 @@ import {
   InMemorySettingsStore,
   LogLevel,
   MemoryLogSink,
+  SlidingWindowRateLimiter,
   createIpcRateLimiter,
+  createScanRateLimiter,
 } from '@sentinel-shield/core';
 import {
   MemoryKvStorage,
@@ -27,6 +29,7 @@ import {
 import {
   InterceptKind,
   MAX_IPC_MSG_PER_MIN_PER_TAB,
+  MAX_SCANS_PER_MIN_PER_TAB,
   MessageType,
 } from '@sentinel-shield/shared-types';
 import { runThreatSimulation as runEngineThreatSim } from '@sentinel-shield/detection-engine';
@@ -38,7 +41,13 @@ import { OffscreenManager } from './offscreen/manager.js';
 import { runMigrations } from './lifecycle/migrations.js';
 import { verifyWasmAsset } from './offscreen/wasm-integrity.js';
 
-async function buildRouter(safeMode = false) {
+async function buildRouter(
+  safeMode = false,
+  rateOptions?: {
+    rateLimiter?: SlidingWindowRateLimiter;
+    scanRateLimiter?: SlidingWindowRateLimiter;
+  },
+) {
   const storage = new MemoryKvStorage();
   const logger = new AllowlistLogger(new MemoryLogSink(), LogLevel.DEBUG);
   await runMigrations(storage, logger);
@@ -66,7 +75,8 @@ async function buildRouter(safeMode = false) {
       isSafeMode: async () => safeMode,
     }),
     logger,
-    rateLimiter: createIpcRateLimiter(),
+    rateLimiter: rateOptions?.rateLimiter ?? createIpcRateLimiter(),
+    scanRateLimiter: rateOptions?.scanRateLimiter ?? createScanRateLimiter(),
     isSafeMode: async () => safeMode,
   });
 }
@@ -111,6 +121,19 @@ describe('Phase 3 — PART_14 sender authorization', () => {
     expect(response.ok).toBe(true);
   });
 
+  it('allows CONFIG_SET from extension options tab (chrome-extension url + tab)', async () => {
+    const router = await buildRouter();
+    const envelope = createEnvelope(MessageType.CONFIG_SET, {
+      featureFlags: { telemetryEnabled: true },
+    });
+    const response = await router.handle(envelope, {
+      id: 'extension-id',
+      url: 'chrome-extension://abc/options.html',
+      tab: { id: 55 } as chrome.tabs.Tab,
+    });
+    expect(response.ok).toBe(true);
+  });
+
   it('authorizeMessageSender blocks PLATFORM_DISABLE from tab', () => {
     const result = authorizeMessageSender(MessageType.PLATFORM_DISABLE, {
       tab: { id: 7 } as chrome.tabs.Tab,
@@ -127,6 +150,33 @@ describe('Phase 3 — rate limit & safe mode', () => {
     for (let i = 0; i < MAX_IPC_MSG_PER_MIN_PER_TAB + 2; i += 1) {
       const response = await router.handle(
         createEnvelope(MessageType.PING, { nonce: String(i) }),
+        sender,
+      );
+      if (!response.ok && response.error === 'RATE_LIMITED') {
+        limited = true;
+        break;
+      }
+    }
+    expect(limited).toBe(true);
+  });
+
+  it('scan-rate-limits INTERCEPT_EVENT after MAX_SCANS_PER_MIN_PER_TAB (KI-022)', async () => {
+    // High IPC ceiling so only the scan budget can trip.
+    const router = await buildRouter(false, {
+      rateLimiter: new SlidingWindowRateLimiter(10_000),
+      scanRateLimiter: createScanRateLimiter(),
+    });
+    const sender = { tab: { id: 42 } as chrome.tabs.Tab };
+    let limited = false;
+    for (let i = 0; i < MAX_SCANS_PER_MIN_PER_TAB + 2; i += 1) {
+      const response = await router.handle(
+        createEnvelope(MessageType.INTERCEPT_EVENT, {
+          interceptId: `i-${i}`,
+          kind: InterceptKind.PASTE,
+          payload: { kind: 'text', text: 'hi', byteLength: 2 },
+          targetHint: 'ai-input',
+          timestampMs: Date.now(),
+        }),
         sender,
       );
       if (!response.ok && response.error === 'RATE_LIMITED') {

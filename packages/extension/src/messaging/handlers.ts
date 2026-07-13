@@ -22,6 +22,7 @@ import {
   listEnabledPlatforms,
   type PermissionsApi,
   type ScriptingApi,
+  type TabsApi,
 } from '../lifecycle/registration.js';
 import type { OffscreenManager } from '../offscreen/manager.js';
 import type { MessageHandler } from './router.js';
@@ -38,6 +39,7 @@ export interface HandlerDeps {
   readonly isSafeMode: () => Promise<boolean>;
   readonly detectionEngine?: DetectionEngine;
   readonly permissions?: PermissionsApi;
+  readonly tabs?: TabsApi;
   readonly historyStore?: {
     append(entry: {
       readonly interceptId: string;
@@ -81,13 +83,20 @@ export function createHandlers(deps: HandlerDeps): Partial<Record<MessageType, M
 
     [MessageType.PLATFORM_ENABLE]: async (envelope) => {
       const { platformId } = envelope.payload as PlatformTogglePayload;
-      await enablePlatform(deps.storage, deps.scripting, deps.logger, platformId, deps.permissions);
+      await enablePlatform(
+        deps.storage,
+        deps.scripting,
+        deps.logger,
+        platformId,
+        deps.permissions,
+        deps.tabs,
+      );
       return { platformId, enabled: true };
     },
 
     [MessageType.PLATFORM_DISABLE]: async (envelope) => {
       const { platformId } = envelope.payload as PlatformTogglePayload;
-      await disablePlatform(deps.storage, deps.scripting, deps.logger, platformId);
+      await disablePlatform(deps.storage, deps.scripting, deps.logger, platformId, deps.tabs);
       return { platformId, enabled: false };
     },
 

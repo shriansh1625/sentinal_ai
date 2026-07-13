@@ -1,5 +1,6 @@
 /**
  * Drag-and-drop interception — PART_10 §5.2 / PART_17.
+ * HOLD keeps a File snapshot so "Allow once" can re-dispatch the drop.
  */
 
 import { MAX_FILE_BYTES, MAX_TEXT_SCAN_BYTES } from '@sentinel-shield/shared-types';
@@ -10,7 +11,12 @@ import {
   type InterceptOutcome,
   type InterceptedFileMeta,
 } from '@sentinel-shield/shared-types';
-import { createApprovalNonce, isApproved, markApproved } from '../content/approval-nonce.js';
+import {
+  createApprovalNonce,
+  isApproved,
+  isSentinelRelease,
+  markApproved,
+} from '../content/approval-nonce.js';
 import type { InterceptDispatcher, PendingRelease } from './paste.js';
 
 export interface DragDropInterceptorOptions {
@@ -52,7 +58,7 @@ export class DragDropInterceptor {
   };
 
   private async handleDrop(event: DragEvent): Promise<void> {
-    if (isApproved(event, this.nonce)) return;
+    if (isApproved(event, this.nonce) || isSentinelRelease(event)) return;
 
     const dt = event.dataTransfer;
     if (!dt) return;
@@ -61,10 +67,10 @@ export class DragDropInterceptor {
     event.stopImmediatePropagation();
 
     const text = dt.getData('text/plain');
-    const fileList = dt.files;
+    const snapshot = Array.from(dt.files);
     const files: InterceptedFileMeta[] = [];
     let totalBytes = 0;
-    for (const file of Array.from(fileList)) {
+    for (const file of snapshot) {
       totalBytes += file.size;
       files.push({
         name: file.name,
@@ -77,6 +83,12 @@ export class DragDropInterceptor {
     const target = event.target;
     if (!(target instanceof EventTarget)) return;
 
+    const release: PendingRelease = {
+      allowOriginal: () => this.redispatchDrop(target, text, snapshot),
+      allowRedacted: (redacted) => this.redispatchDrop(target, redacted, []),
+      discard: () => undefined,
+    };
+
     let interceptEvent: InterceptEvent;
     if (files.length > 0) {
       if (totalBytes > MAX_FILE_BYTES) {
@@ -87,11 +99,15 @@ export class DragDropInterceptor {
           targetHint: 'drop-target',
           timestampMs: Date.now(),
         };
-        this.options.onDecision?.(interceptEvent, {
-          interceptId,
-          decision: InterceptDecision.HOLD,
-          reason: 'Drop exceeds MAX_FILE_BYTES',
-        });
+        this.options.onDecision?.(
+          interceptEvent,
+          {
+            interceptId,
+            decision: InterceptDecision.HOLD,
+            reason: 'Drop exceeds MAX_FILE_BYTES',
+          },
+          release,
+        );
         return;
       }
       interceptEvent = {
@@ -117,6 +133,7 @@ export class DragDropInterceptor {
             decision: InterceptDecision.HOLD,
             reason: 'Drop text exceeds MAX_TEXT_SCAN_BYTES',
           },
+          release,
         );
         return;
       }
@@ -131,7 +148,7 @@ export class DragDropInterceptor {
 
     const outcome = await this.options.dispatch(interceptEvent);
     if (outcome.decision === InterceptDecision.ALLOW) {
-      this.redispatchDrop(target, text, fileList);
+      this.redispatchDrop(target, text, snapshot);
       return;
     }
     if (
@@ -139,16 +156,42 @@ export class DragDropInterceptor {
       outcome.redactedText !== undefined &&
       interceptEvent.payload.kind === 'text'
     ) {
-      this.redispatchDrop(target, outcome.redactedText, fileList);
+      this.redispatchDrop(target, outcome.redactedText, []);
       return;
     }
-    this.options.onDecision?.(interceptEvent, outcome);
+    this.options.onDecision?.(interceptEvent, outcome, release);
   }
 
-  private redispatchDrop(target: EventTarget, text: string, files: FileList): void {
+  private redispatchDrop(target: EventTarget, text: string, files: readonly File[]): void {
+    if (files.length > 0) {
+      const input =
+        document
+          .querySelector('#prompt-textarea')
+          ?.closest('form')
+          ?.querySelector('input[type="file"]') ?? document.querySelector('input[type="file"]');
+      if (input instanceof HTMLInputElement) {
+        const dt = new DataTransfer();
+        for (const file of files) {
+          dt.items.add(file);
+        }
+        try {
+          (input as HTMLInputElement & { files: FileList }).files = dt.files;
+        } catch {
+          Object.defineProperty(input, 'files', {
+            value: dt.files,
+            configurable: true,
+          });
+        }
+        const change = new Event('change', { bubbles: true, cancelable: true });
+        markApproved(change, this.nonce);
+        input.dispatchEvent(change);
+        return;
+      }
+    }
+
     const dt = new DataTransfer();
     if (text) dt.setData('text/plain', text);
-    for (const file of Array.from(files)) {
+    for (const file of files) {
       dt.items.add(file);
     }
     const synthetic = new DragEvent('drop', {

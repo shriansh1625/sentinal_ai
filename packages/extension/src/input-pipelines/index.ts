@@ -73,6 +73,10 @@ export function createInterceptionController(
           }
           if (action === 'redact' && outcome.redactedText) {
             release.allowRedacted(outcome.redactedText);
+            return;
+          }
+          if (action === 'block') {
+            release.discard?.();
           }
         },
       });
@@ -81,11 +85,17 @@ export function createInterceptionController(
 
   const files = new FileUploadInterceptor({
     dispatch,
-    onDecision: (_event, outcome) => {
+    onDecision: (_event, outcome, release) => {
       overlay.show({
         outcome,
-        onAction: () => {
-          /* file release only on ALLOW path inside interceptor */
+        onAction: (action) => {
+          if (action === 'allow' && release) {
+            release.allowOriginal();
+            return;
+          }
+          if (action === 'block') {
+            release?.discard?.();
+          }
         },
       });
     },
@@ -93,10 +103,18 @@ export function createInterceptionController(
 
   const drag = new DragDropInterceptor({
     dispatch,
-    onDecision: (_event, outcome) => {
+    onDecision: (_event, outcome, release) => {
       overlay.show({
         outcome,
-        onAction: () => undefined,
+        onAction: (action) => {
+          if (action === 'allow' && release) {
+            release.allowOriginal();
+            return;
+          }
+          if (action === 'block') {
+            release?.discard?.();
+          }
+        },
       });
     },
   });

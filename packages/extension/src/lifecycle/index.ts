@@ -5,7 +5,7 @@
 import { AllowlistLogger, ConsoleLogSink, LogLevel, type Logger } from '@sentinel-shield/core';
 import type { KvStorage } from '@sentinel-shield/browser-adapters';
 import { CURRENT_SCHEMA_VERSION, isSafeMode, runMigrations, setSafeMode } from './migrations.js';
-import { registerEnabledPlatforms, type ScriptingApi } from './registration.js';
+import { registerEnabledPlatforms, type ScriptingApi, type TabsApi } from './registration.js';
 
 export const KEEP_ALIVE_ALARM = 'sentinel-sw-keepalive';
 
@@ -14,6 +14,7 @@ export interface LifecycleDeps {
   readonly scripting: ScriptingApi;
   readonly logger?: Logger;
   readonly openOnboarding?: () => Promise<void>;
+  readonly tabs?: TabsApi;
 }
 
 export class LifecycleCoordinator {
@@ -41,7 +42,12 @@ export class LifecycleCoordinator {
       case 'shared_module_update':
         break;
     }
-    await registerEnabledPlatforms(this.deps.storage, this.deps.scripting, this.logger);
+    await registerEnabledPlatforms(
+      this.deps.storage,
+      this.deps.scripting,
+      this.logger,
+      this.deps.tabs,
+    );
     this.bootstrapped = true;
   }
 
@@ -62,7 +68,12 @@ export class LifecycleCoordinator {
   async rehydrateSessionState(): Promise<void> {
     // SW may wake without onStartup — restore platform registrations from storage.
     this.logger.info('session rehydrate', { schemaVersion: CURRENT_SCHEMA_VERSION });
-    await registerEnabledPlatforms(this.deps.storage, this.deps.scripting, this.logger);
+    await registerEnabledPlatforms(
+      this.deps.storage,
+      this.deps.scripting,
+      this.logger,
+      this.deps.tabs,
+    );
   }
 
   async bootstrapFreshInstall(): Promise<void> {

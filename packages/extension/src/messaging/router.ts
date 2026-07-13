@@ -1,10 +1,16 @@
 /**
  * Message router — PART_10 §6.2 / PART_14.
- * Validate → authorize sender → rate limit → dispatch → respond. Fail closed.
+ * Validate → authorize sender → IPC rate limit → scan rate limit → dispatch → respond.
+ * Fail closed.
+ *
+ * Requirement: SS-OWN-001 §3 / PART_12 (MAX_IPC + MAX_SCANS per tab).
+ * Threat: DoS via INTERCEPT_EVENT / SCAN_REQUEST flood (KI-022).
+ * ADR: Architecture Freeze constants unchanged; wiring only.
  */
 
 import {
   createIpcRateLimiter,
+  createScanRateLimiter,
   type Logger,
   type SlidingWindowRateLimiter,
 } from '@sentinel-shield/core';
@@ -21,6 +27,8 @@ export interface MessageRouterOptions {
   readonly handlers: Partial<Record<MessageType, MessageHandler>>;
   readonly logger: Logger;
   readonly rateLimiter?: SlidingWindowRateLimiter;
+  /** Per-tab scan budget (INTERCEPT_EVENT / SCAN_REQUEST). Defaults to createScanRateLimiter(). */
+  readonly scanRateLimiter?: SlidingWindowRateLimiter;
   readonly handlerTimeoutMs?: number;
   readonly isSafeMode?: () => Promise<boolean>;
   readonly safeModeAllowed?: ReadonlySet<MessageType>;
@@ -33,13 +41,20 @@ const DEFAULT_SAFE_MODE_ALLOWED = new Set<MessageType>([
   MessageType.FEATURE_FLAGS_GET,
 ]);
 
+const SCAN_MESSAGE_TYPES = new Set<MessageType>([
+  MessageType.INTERCEPT_EVENT,
+  MessageType.SCAN_REQUEST,
+]);
+
 export class MessageRouter {
   private readonly rateLimiter: SlidingWindowRateLimiter;
+  private readonly scanRateLimiter: SlidingWindowRateLimiter;
   private readonly handlerTimeoutMs: number;
   private readonly safeModeAllowed: ReadonlySet<MessageType>;
 
   constructor(private readonly options: MessageRouterOptions) {
     this.rateLimiter = options.rateLimiter ?? createIpcRateLimiter();
+    this.scanRateLimiter = options.scanRateLimiter ?? createScanRateLimiter();
     this.handlerTimeoutMs = options.handlerTimeoutMs ?? 30_000;
     this.safeModeAllowed = options.safeModeAllowed ?? DEFAULT_SAFE_MODE_ALLOWED;
   }
@@ -81,6 +96,17 @@ export class MessageRouter {
         requestId: envelope.requestId,
         error: 'RATE_LIMITED',
       };
+    }
+
+    if (SCAN_MESSAGE_TYPES.has(envelope.type)) {
+      const scanLimit = this.scanRateLimiter.allow(`scan:${tabKey}`);
+      if (!scanLimit.allowed) {
+        return {
+          ok: false,
+          requestId: envelope.requestId,
+          error: 'RATE_LIMITED',
+        };
+      }
     }
 
     if (this.options.isSafeMode && (await this.options.isSafeMode())) {

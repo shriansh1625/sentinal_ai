@@ -213,6 +213,10 @@ export class MemorySessionKeyStore implements SessionKeyStore {
 /**
  * Encrypts selected keys at rest in a backing KvStorage.
  * Non-sensitive keys can pass through via `plaintextKeys`.
+ *
+ * Session key material lives in chrome.storage.session and is wiped when the
+ * browser session ends or the extension is reloaded in Developer mode. Orphaned
+ * ciphertext cannot be decrypted — initialize() clears local data and starts fresh.
  */
 export class EncryptedKvStorage implements KvStorage {
   private aesKey: CryptoKey | null = null;
@@ -226,6 +230,8 @@ export class EncryptedKvStorage implements KvStorage {
   async initialize(): Promise<void> {
     let raw = await this.sessionKeys.get();
     if (!raw) {
+      // Unrecoverable without the session key — drop stale envelopes (PART_19).
+      await this.backing.clear();
       raw = await generateDataKey();
       await this.sessionKeys.set(raw);
       const salt = new Uint8Array(16);
@@ -264,13 +270,10 @@ export class EncryptedKvStorage implements KvStorage {
     if (envelope === undefined) return undefined;
     try {
       return await decryptJson<T>(await this.key(), envelope, storageKey);
-    } catch (cause) {
-      throw new SentinelError({
-        code: ErrorCode.STORAGE,
-        message: 'Decrypt failed',
-        cause,
-        retriable: false,
-      });
+    } catch {
+      // Stale ciphertext after session-key rotation — drop and treat as miss.
+      await this.backing.remove(storageKey);
+      return undefined;
     }
   }
 

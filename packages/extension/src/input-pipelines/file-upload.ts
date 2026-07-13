@@ -1,6 +1,10 @@
 /**
  * File upload interception — PART_10 §5.2 / PART_17 upload pipeline.
  * Text-like files ≤ MAX_TEXT_SCAN_BYTES are scanned as text; others HOLD for OCR.
+ *
+ * HOLD must NOT clear the input: ChatGPT/React keep a live reference to the same
+ * <input type="file">. Clearing + cloning breaks Allow once. On Allow we re-fire
+ * an approved `change` on the same node so the page sees the still-attached files.
  */
 
 import { MAX_FILE_BYTES, MAX_TEXT_SCAN_BYTES } from '@sentinel-shield/shared-types';
@@ -12,7 +16,12 @@ import {
   type InterceptedFileMeta,
 } from '@sentinel-shield/shared-types';
 import { MimeFamily, sniffMagicBytes } from '@sentinel-shield/detection-engine';
-import { createApprovalNonce, isApproved, markApproved } from '../content/approval-nonce.js';
+import {
+  createApprovalNonce,
+  isApproved,
+  isSentinelRelease,
+  markApproved,
+} from '../content/approval-nonce.js';
 import { findFileInputs } from './context.js';
 import type { InterceptDispatcher, PendingRelease } from './paste.js';
 
@@ -71,7 +80,7 @@ export class FileUploadInterceptor {
   };
 
   private async handleChange(event: Event): Promise<void> {
-    if (isApproved(event, this.nonce)) return;
+    if (isApproved(event, this.nonce) || isSentinelRelease(event)) return;
     const input = event.target;
     if (!(input instanceof HTMLInputElement) || input.type !== 'file') return;
 
@@ -81,9 +90,10 @@ export class FileUploadInterceptor {
     event.preventDefault();
     event.stopImmediatePropagation();
 
+    const snapshot = Array.from(fileList);
     const files: InterceptedFileMeta[] = [];
     let totalBytes = 0;
-    for (const file of Array.from(fileList)) {
+    for (const file of snapshot) {
       totalBytes += file.size;
       files.push({
         name: file.name,
@@ -91,6 +101,16 @@ export class FileUploadInterceptor {
         sizeBytes: file.size,
       });
     }
+
+    const release: PendingRelease = {
+      allowOriginal: () => this.releaseFiles(input, snapshot),
+      allowRedacted: () => this.releaseFiles(input, snapshot),
+      discard: () => {
+        if (input.isConnected) {
+          input.value = '';
+        }
+      },
+    };
 
     if (totalBytes > MAX_FILE_BYTES || files.some((f) => f.sizeBytes > MAX_FILE_BYTES)) {
       const interceptEvent: InterceptEvent = {
@@ -100,12 +120,19 @@ export class FileUploadInterceptor {
         targetHint: 'file-input',
         timestampMs: Date.now(),
       };
-      this.options.onDecision?.(interceptEvent, {
-        interceptId: interceptEvent.interceptId,
-        decision: InterceptDecision.HOLD,
-        reason: 'File exceeds MAX_FILE_BYTES',
-      });
-      input.value = '';
+      // Keep files on input for Allow once; only Block clears.
+      this.options.onDecision?.(
+        interceptEvent,
+        {
+          interceptId: interceptEvent.interceptId,
+          decision: InterceptDecision.HOLD,
+          reason: 'File exceeds MAX_FILE_BYTES',
+        },
+        {
+          allowOriginal: () => this.releaseFiles(input, snapshot),
+          allowRedacted: () => this.releaseFiles(input, snapshot),
+        },
+      );
       return;
     }
 
@@ -118,8 +145,8 @@ export class FileUploadInterceptor {
       timestampMs: Date.now(),
     };
 
-    if (fileList.length === 1) {
-      const file = fileList.item(0);
+    if (snapshot.length === 1) {
+      const file = snapshot[0];
       if (file && file.size <= MAX_TEXT_SCAN_BYTES) {
         const bytes = new Uint8Array(await file.arrayBuffer());
         const sniff = sniffMagicBytes(bytes);
@@ -138,37 +165,62 @@ export class FileUploadInterceptor {
 
     const outcome = await this.options.dispatch(interceptEvent);
     if (outcome.decision === InterceptDecision.ALLOW) {
-      this.releaseFiles(input, fileList);
+      this.releaseFiles(input, snapshot);
       return;
     }
-    if (
-      outcome.decision === InterceptDecision.REDACT &&
-      outcome.redactedText !== undefined &&
-      interceptEvent.payload.kind === 'text'
-    ) {
-      // Text file redaction: release original file only after user path — hold closed.
-      this.options.onDecision?.(interceptEvent, outcome);
+    if (outcome.decision === InterceptDecision.BLOCK) {
       input.value = '';
+      this.options.onDecision?.(interceptEvent, outcome);
       return;
     }
-    input.value = '';
-    this.options.onDecision?.(interceptEvent, outcome);
+    // HOLD / REDACT: keep FileList on the same input so React still owns the node.
+    this.options.onDecision?.(interceptEvent, outcome, release);
   }
 
-  private releaseFiles(input: HTMLInputElement, files: FileList): void {
+  /**
+   * Re-notify the page that files are selected, without replacing the DOM node
+   * (cloning breaks React-controlled ChatGPT upload inputs).
+   */
+  private releaseFiles(original: HTMLInputElement, files: readonly File[]): void {
+    const input = resolveLiveFileInput(original);
+    if (!input) {
+      return;
+    }
+    this.attachInput(input);
+
     const dt = new DataTransfer();
-    for (const file of Array.from(files)) {
+    for (const file of files) {
       dt.items.add(file);
     }
-    const clone = input.cloneNode(true) as HTMLInputElement;
-    Object.defineProperty(clone, 'files', {
-      value: dt.files,
-      configurable: true,
-    });
-    input.parentNode?.replaceChild(clone, input);
-    this.attachInput(clone);
+
+    const hasFiles = Boolean(input.files && input.files.length > 0);
+    if (!hasFiles) {
+      try {
+        // Chromium supports assigning DataTransfer.files to input.files.
+        (input as HTMLInputElement & { files: FileList }).files = dt.files;
+      } catch {
+        Object.defineProperty(input, 'files', {
+          value: dt.files,
+          configurable: true,
+        });
+      }
+    }
+
     const change = new Event('change', { bubbles: true, cancelable: true });
     markApproved(change, this.nonce);
-    clone.dispatchEvent(change);
+    input.dispatchEvent(change);
+
+    // Some hosts also listen for input.
+    const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+    markApproved(inputEvent, this.nonce);
+    input.dispatchEvent(inputEvent);
   }
+}
+
+function resolveLiveFileInput(original: HTMLInputElement): HTMLInputElement | null {
+  if (original.isConnected) {
+    return original;
+  }
+  const candidates = findFileInputs(document);
+  return candidates[0] ?? null;
 }

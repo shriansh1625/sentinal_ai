@@ -1,5 +1,10 @@
 /**
  * MV3 service worker entry — PART_10 / PART_11 / PART_19.
+ *
+ * CRITICAL: chrome.runtime.onMessage must be registered synchronously during
+ * module evaluation. Awaiting crypto/config before addListener causes
+ * "Could not establish connection. Receiving end does not exist." when the
+ * popup opens during SW wake/bootstrap.
  */
 
 import {
@@ -25,7 +30,7 @@ import { DEFAULT_APP_SETTINGS, MessageType, type AppSettings } from '@sentinel-s
 import { ensureKeepAliveAlarm, LifecycleCoordinator } from './lifecycle/index.js';
 import { SETTINGS_KEY } from './lifecycle/migrations.js';
 import { OffscreenManager } from './offscreen/manager.js';
-import { attachChromeMessageListener, MessageRouter } from './messaging/router.js';
+import { MessageRouter } from './messaging/router.js';
 import { createHandlers } from './messaging/handlers.js';
 import { EncryptedHistoryStore } from './storage/history-store.js';
 
@@ -76,6 +81,9 @@ export async function bootstrapServiceWorker(): Promise<{
     storage: encrypted,
     scripting: chrome.scripting,
     logger,
+    tabs: {
+      query: (queryInfo) => chrome.tabs.query(queryInfo),
+    },
     openOnboarding: async () => {
       await chrome.runtime.openOptionsPage().catch(() => undefined);
     },
@@ -96,13 +104,16 @@ export async function bootstrapServiceWorker(): Promise<{
       getVersion: () => chrome.runtime.getManifest().version,
       isSafeMode: () => lifecycle.checkSafeMode(),
       permissions: chrome.permissions,
+      tabs: {
+        query: (queryInfo) => chrome.tabs.query(queryInfo),
+      },
       historyStore,
     }),
     logger,
     isSafeMode: () => lifecycle.checkSafeMode(),
   });
 
-  attachChromeMessageListener(router);
+  // Message listener is attached at module scope (see below) — do not delay it.
 
   chrome.runtime.onInstalled.addListener((details) => {
     void lifecycle.handleInstalled({
@@ -127,7 +138,13 @@ export async function bootstrapServiceWorker(): Promise<{
 
   const telemetry = new TelemetryService(flags);
   await telemetry.track('sw_bootstrap');
-  new MemoryMonitor(new BrowserMemoryProvider()).assertWithinBudget();
+  try {
+    new MemoryMonitor(new BrowserMemoryProvider()).assertWithinBudget();
+  } catch (cause) {
+    logger.warn('memory budget exceeded at bootstrap (non-fatal)', {
+      message: cause instanceof Error ? cause.message : 'unknown',
+    });
+  }
 
   const sample = perf.end('sw_bootstrap');
   logger.info('service worker ready', {
@@ -145,10 +162,55 @@ function isChromeExtensionRuntime(): boolean {
   return typeof chrome !== 'undefined' && typeof chrome.runtime !== 'undefined';
 }
 
-if (isChromeExtensionRuntime()) {
-  void bootstrapServiceWorker().catch((error: unknown) => {
-    logger.error('service worker bootstrap failed', {
-      message: error instanceof Error ? error.message : 'unknown',
-    });
+function requestIdOf(raw: unknown): string {
+  if (typeof raw === 'object' && raw !== null && 'requestId' in raw) {
+    const id = (raw as { requestId?: unknown }).requestId;
+    if (typeof id === 'string') return id;
+  }
+  return 'unknown';
+}
+
+/** Resolved once bootstrap finishes; messages wait on this promise. */
+let bootstrapRouter: Promise<MessageRouter> | null = null;
+
+function attachEarlyMessageListener(): void {
+  chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {
+    const ready = bootstrapRouter;
+    if (!ready) {
+      sendResponse({
+        ok: false,
+        requestId: requestIdOf(raw),
+        error: 'SW_NOT_STARTED',
+      });
+      return true;
+    }
+    void ready
+      .then((router) => router.handle(raw, sender))
+      .then(sendResponse)
+      .catch((error: unknown) => {
+        logger.error('message handling failed during/after bootstrap', {
+          message: error instanceof Error ? error.message : 'unknown',
+        });
+        sendResponse({
+          ok: false,
+          requestId: requestIdOf(raw),
+          error: 'SW_BOOTSTRAP_FAILED',
+        });
+      });
+    return true;
   });
+}
+
+if (isChromeExtensionRuntime()) {
+  // Start bootstrap immediately, then register the listener in the same sync turn.
+  // Messages that arrive while waking wait on bootstrapRouter.
+  bootstrapRouter = bootstrapServiceWorker()
+    .then((ctx) => ctx.router)
+    .catch((error: unknown) => {
+      logger.error('service worker bootstrap failed', {
+        message: error instanceof Error ? error.message : 'unknown',
+      });
+      throw error;
+    });
+  attachEarlyMessageListener();
 }

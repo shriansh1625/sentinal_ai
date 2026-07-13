@@ -66,12 +66,9 @@ function sanitizeFields(fields: LogFields | undefined): LogFields {
 
 export class ConsoleLogSink implements LogSink {
   write(record: LogRecord): void {
-    const line = {
-      level: record.level,
-      message: record.message,
-      timestampMs: record.timestampMs,
-      ...record.fields,
-    };
+    const line = `[sentinel ${record.level}] ${record.message}${
+      Object.keys(record.fields).length > 0 ? ` ${JSON.stringify(record.fields)}` : ''
+    }`;
     if (record.level >= LogLevel.ERROR) {
       console.error(line);
       return;

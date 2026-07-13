@@ -37,6 +37,9 @@ describe('Sprint 2 — context detection', () => {
     const el = document.createElement('textarea');
     expect(isLikelyAiInput(el)).toBe(true);
     expect(isLikelyAiInput(document.createElement('div'))).toBe(false);
+    const text = document.createTextNode('x');
+    el.appendChild(text);
+    expect(isLikelyAiInput(text)).toBe(true);
   });
 });
 

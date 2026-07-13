@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "certifiedAt": "2026-07-12",
+  "certifiedAt": "2026-07-13",
   "packageVersion": "0.2.1",
   "engineeringVerdict": "GO_CERTIFIED_RC",
   "publicProductionVerdict": "NO_GO",
@@ -13,8 +13,11 @@
     "G4_claims": "PASS",
     "G5_freeze": "PASS"
   },
-  "publicBlockers": ["G3", "KI-006", "KI-018", "KI-001"],
-  "softResiduals": ["KI-002", "KI-014", "KI-017", "KI-012"],
+  "publicBlockers": ["G3", "KI-006", "KI-018"],
+  "softResiduals": ["KI-002", "KI-014", "KI-017", "KI-012", "KI-023"],
+  "closedTrackers": ["KI-001", "KI-022"],
+  "gapBoardAt": "2026-07-13",
+  "gapBoardNote": "Scan rate limiter wired; phone precision gate; eval holdout. Public blockers unchanged.",
   "authorizesCwsPublish": false,
   "authorizesLoadUnpackedBeta": true
 }

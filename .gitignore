@@ -30,6 +30,8 @@ test-results/
 screenshots/
 logs/
 *.log
+tools/eval-harness/artifacts/
+tools/red-team/artifacts/
 
 # OS / IDE
 .DS_Store

@@ -20,6 +20,7 @@
     "purity": "node tools/engine-purity/check.mjs",
     "doc-lint": "node tools/doc-lint/check.mjs",
     "bench:budgets": "node tools/benchmarks/check-budgets.mjs",
+    "eval:detection": "pnpm --filter @sentinel-shield/detection-engine build && node tools/eval-harness/run-eval.mjs",
     "ci": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm purity && pnpm depcruise && pnpm doc-lint && pnpm bench:budgets && pnpm --filter @sentinel-shield/extension verify:bundle && node tools/certification/check.mjs",
     "certify": "node tools/certification/check.mjs",
     "test:e2e": "playwright test",

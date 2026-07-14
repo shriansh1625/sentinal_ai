@@ -1,121 +1,138 @@
 # Sentinel Shield AI
 
-**Local-first Chromium MV3 privacy firewall for browser-based generative AI systems.**
+### Local-first privacy firewall for browser-based generative AI
 
-Intercepts paste, file upload, and drag-and-drop on user-enabled AI hosts. Runs **on-device Tier-1 detection** (regex, checksums, entropy, bounded decode/rescan) before content reaches the page. No cloud detection path.
+<p align="center">
+  <strong>Intercept · Detect on-device · Decide before the page gets the data</strong>
+</p>
 
-|                                          |                                                                                                                      |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **Milestone**                            | [`v0.3.0-internal-beta`](https://github.com/shriansh1625/sentinal_ai/releases/tag/v0.3.0-internal-beta) (2026-07-13) |
-| **Extension package**                    | `0.2.1`                                                                                                              |
-| **Architecture**                         | Frozen v1.0                                                                                                          |
-| **Engineering RC / load-unpacked beta**  | **GO**                                                                                                               |
-| **Chrome Web Store / public production** | **NO-GO**                                                                                                            |
+<p align="center">
+  <img alt="Milestone" src="https://img.shields.io/badge/milestone-v0.3.0--internal--beta-0B3D2E?style=for-the-badge" />
+  <img alt="Architecture Freeze" src="https://img.shields.io/badge/architecture-freeze%20v1.0-1B4F72?style=for-the-badge" />
+  <img alt="Engineering RC" src="https://img.shields.io/badge/engineering%20RC-GO-1E8449?style=for-the-badge" />
+  <img alt="Public CWS" src="https://img.shields.io/badge/Chrome%20Web%20Store-NO--GO-922B21?style=for-the-badge" />
+</p>
 
-> This repository is an **engineering case study and internal beta**, not a store-published product. Claims are evidence-backed. Limitations are documented.
+<p align="center">
+  <a href="#quick-start-60-seconds">Quick Start</a> ·
+  <a href="#what-you-get">Capabilities</a> ·
+  <a href="#measured-results">Evidence</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#documentation">Docs</a> ·
+  <a href="#honest-limitations">Limitations</a>
+</p>
 
 ---
 
-## Why it exists
+## The problem in one line
 
-Users paste API keys, cards, and sensitive text into ChatGPT, Claude, Gemini, and similar tools. That content often never crosses a corporate DLP appliance as a distinct network transaction — it leaves through ordinary browser events.
+People paste API keys, cards, and private text into ChatGPT, Claude, Gemini, and coding copilots — often **before any enterprise DLP ever sees it**.
 
-Sentinel Shield sits at that boundary:
+**Sentinel Shield** sits in that gap: a Chromium **Manifest V3** extension that intercepts paste / upload / drag-drop on **user-enabled AI hosts**, runs **100% on-device Tier-1 detection**, and returns allow / hold / redact / block — **with no cloud detection path**.
+
+---
+
+## Snapshot
+
+|                    |                                                                                                         |
+| :----------------- | :------------------------------------------------------------------------------------------------------ |
+| **What it is**     | Engineering case study + load-unpacked **internal beta**                                                |
+| **What it is not** | Chrome Web Store app · enterprise SOC · network DLP                                                     |
+| **Detection**      | On-device regex + checksums + entropy + bounded decode/rescan                                           |
+| **Milestone**      | [`v0.3.0-internal-beta`](https://github.com/shriansh1625/sentinal_ai/releases/tag/v0.3.0-internal-beta) |
+| **Extension**      | `0.2.1`                                                                                                 |
+| **Verdict**        | Engineering RC **GO** · Public production **NO-GO**                                                     |
 
 ```
-AI host page (untrusted)
-        ↑  decision (allow / hold / redact / block)
-Content script  →  Service Worker  →  pure detection-engine (no network)
+  ┌─────────────────── AI host page (untrusted) ───────────────────┐
+  │  ChatGPT · Claude · Gemini · Copilot · …                       │
+  └─────────────────────────────▲──────────────────────────────────┘
+                                │ policy decision
+  ┌─────────────────────────────┴──────────────────────────────────┐
+  │  Content script (capture-phase)  →  Service Worker             │
+  │       validate · auth · rate-limit · fail-closed               │
+  │                         ↓                                      │
+  │              @sentinel-shield/detection-engine                 │
+  │              pure library · zero network I/O                   │
+  └────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## What works today
+## What you get
 
-| Capability                                                                       | Status                                   |
-| -------------------------------------------------------------------------------- | ---------------------------------------- |
-| Paste / upload / drag-drop intercept on enabled AI hosts                         | Implemented                              |
-| On-device Tier-1 text detection + policy overlay                                 | Implemented                              |
-| Luhn (PAN) / MOD-97 (IBAN) checksum gates                                        | Implemented                              |
-| Adversarial preprocess (spaced secrets, HTML entities, hex/base64 depth-bounded) | Implemented                              |
-| IPC auth, dual rate limits (30 msg / 20 scans per tab/min)                       | Implemented                              |
-| Encrypted settings; history & telemetry **default off**                          | Implemented                              |
-| Fail-closed on oversize text and unavailable modalities                          | Implemented                              |
-| OCR / image & scanned PDF text extraction                                        | **Fail-closed HOLD** (WASM not vendored) |
-| NER / CV                                                                         | Disabled by design                       |
-| Typing / keystroke interception                                                  | Out of scope (Architecture Freeze)       |
-| Enterprise backend                                                               | Placeholder only — not claimed           |
+<table>
+  <tr>
+    <td width="50%">
 
----
+### Implemented
 
-## Dual certification verdict
+- Paste, upload, and drag-drop interception
+- On-device Tier-1 secret / PII detection
+- Luhn (cards) + MOD-97 (IBAN) validation
+- Spaced / HTML / hex / base64 preprocess
+- Closed Shadow DOM decision overlay
+- IPC auth + **30/min** IPC & **20/min** scan limits
+- Encrypted settings · history **off** by default
+- Architecture Freeze + ADR-backed trade-offs
 
-Machine-readable source: [`store/CERTIFICATION_STATUS.json`](store/CERTIFICATION_STATUS.json)
+</td>
+<td width="50%">
 
-| Gate                   | Result                                   |
-| ---------------------- | ---------------------------------------- |
-| G0 Performance         | PASS WITH FINDINGS                       |
-| G1 Security            | PASS WITH FINDINGS                       |
-| G2 Privacy             | PASS                                     |
-| G3 Live host E2E       | FAIL for public / conditional for eng RC |
-| G4 Claims honesty      | PASS                                     |
-| G5 Architecture freeze | PASS                                     |
+### Intentionally not claimed
 
-**Public blockers:** live host sign-off (KI-006), counsel privacy policy URL (KI-018).  
-**Load-unpacked beta:** authorized.
+- OCR that “reads” images / PDFs _(HOLD fail-closed)_
+- NER / CV models _(disabled by design)_
+- Typing / keystroke interception _(out of freeze)_
+- Enterprise policy backend _(placeholder only)_
+- Public Chrome Web Store readiness
+- Production-traffic precision guarantees
 
----
-
-## Architecture (one screen)
-
-| Package                               | Role                                                |
-| ------------------------------------- | --------------------------------------------------- |
-| `@sentinel-shield/shared-types`       | Canonical constants, IPC types, policy enums        |
-| `@sentinel-shield/core`               | Config, feature flags, logging, rate limiters       |
-| `@sentinel-shield/browser-adapters`   | Chrome storage / crypto / envelope validation       |
-| `@sentinel-shield/detection-engine`   | **Pure** Tier-1 library — no `chrome`, no `fetch`   |
-| `@sentinel-shield/extension`          | MV3 SW, content scripts, Lit UI, offscreen scaffold |
-| `@sentinel-shield/enterprise-backend` | Empty Phase-4 placeholder                           |
-
-**Trust rule:** content scripts never talk to the offscreen document directly. The service worker is the coordinator.
-
-Deeper map: [`PROJECT_KNOWLEDGE_GRAPH.md`](PROJECT_KNOWLEDGE_GRAPH.md) · defense guide: [`ARCHITECTURE_DEFENSE_GUIDE.md`](ARCHITECTURE_DEFENSE_GUIDE.md)
+</td>
+  </tr>
+</table>
 
 ---
 
-## Detection quality (measured, synthetic)
+## Measured results
 
-Harness: `pnpm eval:detection` · seed `1581719041` · n = 20,000 (synthetic)
+Evidence over slogans. Full write-ups linked below.
 
-| Metric               | Phase B (before) | Phase C (after remediations) |
-| -------------------- | ---------------: | ---------------------------: |
-| Precision            |            0.902 |                    **0.994** |
-| Recall               |            0.839 |                    **0.869** |
-| F1                   |            0.869 |                    **0.928** |
-| FPR                  |            0.091 |                    **0.005** |
-| Spaced-secret recall |            0.000 |                    **0.703** |
-| Hard-negative FPR    |            0.303 |                    **0.017** |
+### Detection evaluation _(synthetic, fixed seed `1581719041`, n = 20,000)_
 
-**Honesty:** synthetic corpus, not production traffic. Do not treat headline precision as a Chrome Web Store claim. Reports: [`POST_REMEDIATION_EVALUATION.md`](POST_REMEDIATION_EVALUATION.md)
+| Metric                  | Before (Phase B) | After remediations (Phase C) |
+| :---------------------- | ---------------: | ---------------------------: |
+| **Precision**           |            0.902 |                    **0.994** |
+| **Recall**              |            0.839 |                    **0.869** |
+| **F1**                  |            0.869 |                    **0.928** |
+| **False positive rate** |            0.091 |                    **0.005** |
+| Spaced-secret recall    |            0.000 |                    **0.703** |
+| Hard-negative FPR       |            0.303 |                    **0.017** |
+
+> Synthetic ≠ production traffic. Numbers are reproducible engineering signals — not Store marketing copy.  
+> Details: [`POST_REMEDIATION_EVALUATION.md`](POST_REMEDIATION_EVALUATION.md)
+
+### Red team
+
+|                        |               |
+| :--------------------- | ------------: |
+| Probes executed        |        **39** |
+| Passed                 |        **37** |
+| Accepted residuals     | **2** (ROT13) |
+| False positives in set |         **0** |
+
+Fixed: whitespace / newline chunking, HTML entities, hex, entropy FPs.  
+Catalog: [`BYPASS_DATABASE.md`](BYPASS_DATABASE.md) · Report: [`RED_TEAM_REPORT.md`](RED_TEAM_REPORT.md)
+
+### Engineering gates
+
+`typecheck` · `lint` · `test` · `build` · `purity` · `depcruise` · `bench:budgets` · `certify` — **PASS** on milestone release.
 
 ---
 
-## Red team
+## Quick start (60 seconds to load)
 
-| Result                       |                  Count |
-| ---------------------------- | ---------------------: |
-| Probes                       |                     39 |
-| Pass                         |                 **37** |
-| Accepted bypasses            | **2** (ROT13 AWS / SK) |
-| False positives in probe set |                  **0** |
-
-Fixed classes include whitespace/newline chunking, HTML entities, hex encoding, and entropy false positives. Catalog: [`BYPASS_DATABASE.md`](BYPASS_DATABASE.md) · report: [`RED_TEAM_REPORT.md`](RED_TEAM_REPORT.md)
-
----
-
-## Quick start (load unpacked)
-
-**Requirements:** Node ≥ 20, [pnpm](https://pnpm.io) 9.x, Chromium-based browser.
+**Need:** Node ≥ 20 · pnpm 9 · Chrome / Edge
 
 ```bash
 corepack enable
@@ -123,76 +140,122 @@ pnpm install
 pnpm --filter @sentinel-shield/extension build
 ```
 
-1. Open `chrome://extensions`
-2. Enable **Developer mode**
-3. **Load unpacked** → `packages/extension/dist`
-4. Open the popup → enable an AI platform → grant host permission
-5. Paste a clean sentence (expect allow) and a fake secret such as `AKIAIOSFODNN7EXAMPLE` (expect hold/block/redact)
+1. Open `chrome://extensions` → enable **Developer mode**
+2. **Load unpacked** → select `packages/extension/dist`
+3. Popup → enable one AI platform → grant permission
+4. Try:
+   - Clean sentence → should **allow**
+   - `AKIAIOSFODNN7EXAMPLE` → should **hold / block / redact**
+   - A PNG upload → **HOLD** (OCR unavailable — expected & honest)
 
-Full demo scripts: [`LIVE_DEMO_SCRIPT.md`](LIVE_DEMO_SCRIPT.md)
-
-### Engineering gates
+Demo scripts (5 / 15 / 30 min): [`LIVE_DEMO_SCRIPT.md`](LIVE_DEMO_SCRIPT.md)
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm test
-pnpm build
-pnpm purity          # detection-engine has no chrome/network
-pnpm depcruise
-pnpm bench:budgets
-pnpm eval:detection
-pnpm certify
-# or: pnpm ci
+pnpm ci                 # full engineering gate
+pnpm eval:detection     # regenerate synthetic metrics
 ```
 
 ---
 
-## Known limitations (read before demos)
+## Architecture
 
-| Topic                                   | Truth                                                       |
-| --------------------------------------- | ----------------------------------------------------------- |
-| OCR on images/PDFs                      | **Does not extract text today** — HOLD fail-closed (KI-002) |
-| ROT13-encoded secrets                   | Accepted residual bypass                                    |
-| `clipboard.readText()`                  | Not intercepted in v1                                       |
-| Live ChatGPT/Claude/Gemini CDP sign-off | Open public blocker (KI-006)                                |
-| Chrome Web Store                        | **Not authorized**                                          |
+Built as a **monorepo** so detection stays pure and interview-defensible.
 
-Full list: [`UPDATED_LIMITATIONS.md`](UPDATED_LIMITATIONS.md)
+| Package                | Responsibility                                |
+| :--------------------- | :-------------------------------------------- |
+| `shared-types`         | Freeze constants, IPC contracts, policy enums |
+| `core`                 | Config, flags, logging, rate limiters         |
+| `browser-adapters`     | Chrome storage / crypto / envelope assert     |
+| **`detection-engine`** | Tier-1 engine — **no `chrome`, no `fetch`**   |
+| `extension`            | MV3 service worker, content scripts, Lit UI   |
+| `enterprise-backend`   | Empty placeholder — **not a shipped product** |
+
+**Invariant:** content scripts never talk to offscreen workers directly. The service worker coordinates.
+
+| Dig deeper       |                                                                                  |
+| :--------------- | :------------------------------------------------------------------------------- |
+| System map       | [`PROJECT_KNOWLEDGE_GRAPH.md`](PROJECT_KNOWLEDGE_GRAPH.md)                       |
+| Decision defense | [`ARCHITECTURE_DEFENSE_GUIDE.md`](ARCHITECTURE_DEFENSE_GUIDE.md)                 |
+| Freeze (binding) | [`blueprint/ARCHITECTURE_FREEZE_v1.0.md`](blueprint/ARCHITECTURE_FREEZE_v1.0.md) |
+| Whitepaper       | [`WHITEPAPER_SENTINEL_SHIELD_AI.md`](WHITEPAPER_SENTINEL_SHIELD_AI.md)           |
 
 ---
 
-## Documentation map
+## Certification at a glance
 
-| Audience            | Start here                                                                                                                                          |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Exec / hiring skim  | This README · [`RELEASE_v0.3.0_INTERNAL_BETA.md`](RELEASE_v0.3.0_INTERNAL_BETA.md)                                                                  |
-| Architecture review | [`blueprint/ARCHITECTURE_FREEZE_v1.0.md`](blueprint/ARCHITECTURE_FREEZE_v1.0.md) · [`ARCHITECTURE_DEFENSE_GUIDE.md`](ARCHITECTURE_DEFENSE_GUIDE.md) |
-| Engineering paper   | [`WHITEPAPER_SENTINEL_SHIELD_AI.md`](WHITEPAPER_SENTINEL_SHIELD_AI.md)                                                                              |
-| Threat / bypasses   | [`blueprint/PART_06_THREAT_MODEL_STRIDE_ABUSE.md`](blueprint/PART_06_THREAT_MODEL_STRIDE_ABUSE.md) · [`BYPASS_DATABASE.md`](BYPASS_DATABASE.md)     |
-| Interview prep      | [`TECHNICAL_INTERVIEW_BIBLE.md`](TECHNICAL_INTERVIEW_BIBLE.md) · [`INTERVIEW_DEFENSE_PLAYBOOK.md`](INTERVIEW_DEFENSE_PLAYBOOK.md)                   |
-| Portfolio framing   | [`PORTFOLIO_GUIDE.md`](PORTFOLIO_GUIDE.md)                                                                                                          |
-| Mastery index       | [`ENGINEERING_MASTERY_INDEX.md`](ENGINEERING_MASTERY_INDEX.md)                                                                                      |
+Source of truth: [`store/CERTIFICATION_STATUS.json`](store/CERTIFICATION_STATUS.json)
 
-Blueprint `PART_NN` documents + `DESIGN_OWNERSHIP_MATRIX.md` are authoritative for architecture.  
+| Gate                   | Status                            |
+| :--------------------- | :-------------------------------- |
+| G0 Performance         | PASS WITH FINDINGS                |
+| G1 Security            | PASS WITH FINDINGS                |
+| G2 Privacy             | PASS                              |
+| G3 Live-host E2E       | Conditional eng / **FAIL public** |
+| G4 Claims honesty      | PASS                              |
+| G5 Architecture freeze | PASS                              |
+
+**Authorized:** load-unpacked internal beta  
+**Not authorized:** Chrome Web Store publish  
+**Open public blockers:** live host sign-off (KI-006) · counsel privacy URL (KI-018)
+
+---
+
+## Honest limitations
+
+| Topic                   | Reality                                                 |
+| :---------------------- | :------------------------------------------------------ |
+| Images / scanned PDFs   | **HOLD** — OCR WASM not shipped; do not claim OCR works |
+| ROT13 secrets           | Accepted residual bypass                                |
+| Page `clipboard.read()` | Not intercepted in v1                                   |
+| Iframes                 | Limited (`allFrames: false`)                            |
+| User “Allow anyway”     | Explicit residual — human override                      |
+
+Full matrix: [`UPDATED_LIMITATIONS.md`](UPDATED_LIMITATIONS.md)
+
+---
+
+## Documentation
+
+| If you are…                     | Open this                                                                                                                         |
+| :------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------- |
+| Skimming for hiring / review    | This README · [`RELEASE_v0.3.0_INTERNAL_BETA.md`](RELEASE_v0.3.0_INTERNAL_BETA.md)                                                |
+| Challenging architecture        | [`ARCHITECTURE_DEFENSE_GUIDE.md`](ARCHITECTURE_DEFENSE_GUIDE.md)                                                                  |
+| Reading the engineering paper   | [`WHITEPAPER_SENTINEL_SHIELD_AI.md`](WHITEPAPER_SENTINEL_SHIELD_AI.md)                                                            |
+| Preparing a technical interview | [`TECHNICAL_INTERVIEW_BIBLE.md`](TECHNICAL_INTERVIEW_BIBLE.md) · [`INTERVIEW_DEFENSE_PLAYBOOK.md`](INTERVIEW_DEFENSE_PLAYBOOK.md) |
+| Running a live demo             | [`LIVE_DEMO_SCRIPT.md`](LIVE_DEMO_SCRIPT.md)                                                                                      |
+| Framing the portfolio           | [`PORTFOLIO_GUIDE.md`](PORTFOLIO_GUIDE.md)                                                                                        |
+| Index of mastery artifacts      | [`ENGINEERING_MASTERY_INDEX.md`](ENGINEERING_MASTERY_INDEX.md)                                                                    |
+
+Blueprint `PART_*` + `DESIGN_OWNERSHIP_MATRIX.md` own architecture.  
 `implementation_plan.md` is non-binding.
+
+---
+
+## Design principles (how this was built)
+
+1. **Local-first** — detection never phones home
+2. **Fail closed when unsure** — no silent unscanned release
+3. **Precision over vanity metrics** — detector count is not the scoreboard
+4. **Residuals are named** — ROT13, OCR HOLD, live-host gap are documented, not hidden
+5. **Architecture Freeze** — credibility from constraints, not feature sprawl
 
 ---
 
 ## Explicit non-claims
 
-- Not a Chrome Web Store product
-- Not an enterprise SOC / network DLP replacement
-- Not OCR-capable for images or PDFs in the current build
-- Not production-traffic-validated detection rates
-- Not immune to user override, ROT13, or channels outside paste/upload/drop
+- Not Chrome Web Store ready
+- Not an enterprise DLP replacement
+- Not OCR-capable in the current build
+- Not validated on production user traffic
+- Not “better than” commercial security products
 
 ---
 
-## License / contribution
+<p align="center">
+  <strong>Engineering judgment under constraints.</strong><br/>
+  Built to be demonstrated, measured, red-teamed — and defended in a senior security interview.
+</p>
 
-Private engineering milestone published for review and load-unpacked beta. Architecture is frozen; further value is expected from validation, feedback, and technical communication rather than feature expansion unless a Category A defect is proven.
-
----
-
-**Built as a security-engineering case study:** local-first by design, fail-closed where capability is absent, and honest about what is still open.
+<p align="center">
+  <sub>Milestone <code>v0.3.0-internal-beta</code> · Further value: validation, feedback, and technical communication — not unchecked feature growth.</sub>
+</p>

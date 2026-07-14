@@ -110,7 +110,7 @@ Evidence over slogans. Full write-ups linked below.
 | Hard-negative FPR       |            0.303 |                    **0.017** |
 
 > Synthetic ≠ production traffic. Numbers are reproducible engineering signals — not Store marketing copy.  
-> Details: [`POST_REMEDIATION_EVALUATION.md`](POST_REMEDIATION_EVALUATION.md)
+> Details: [`docs/red-team/POST_REMEDIATION_EVALUATION.md`](docs/red-team/POST_REMEDIATION_EVALUATION.md)
 
 ### Red team
 
@@ -122,7 +122,7 @@ Evidence over slogans. Full write-ups linked below.
 | False positives in set |         **0** |
 
 Fixed: whitespace / newline chunking, HTML entities, hex, entropy FPs.  
-Catalog: [`BYPASS_DATABASE.md`](BYPASS_DATABASE.md) · Report: [`RED_TEAM_REPORT.md`](RED_TEAM_REPORT.md)
+Catalog: [`docs/red-team/BYPASS_DATABASE.md`](docs/red-team/BYPASS_DATABASE.md) · Report: [`docs/red-team/RED_TEAM_REPORT.md`](docs/red-team/RED_TEAM_REPORT.md)
 
 ### Engineering gates
 
@@ -148,7 +148,7 @@ pnpm --filter @sentinel-shield/extension build
    - `AKIAIOSFODNN7EXAMPLE` → should **hold / block / redact**
    - A PNG upload → **HOLD** (OCR unavailable — expected & honest)
 
-Demo scripts (5 / 15 / 30 min): [`LIVE_DEMO_SCRIPT.md`](LIVE_DEMO_SCRIPT.md)
+Demo scripts (5 / 15 / 30 min): [`docs/mastery/LIVE_DEMO_SCRIPT.md`](docs/mastery/LIVE_DEMO_SCRIPT.md)
 
 ```bash
 pnpm ci                 # full engineering gate
@@ -172,12 +172,12 @@ Built as a **monorepo** so detection stays pure and interview-defensible.
 
 **Invariant:** content scripts never talk to offscreen workers directly. The service worker coordinates.
 
-| Dig deeper       |                                                                                  |
-| :--------------- | :------------------------------------------------------------------------------- |
-| System map       | [`PROJECT_KNOWLEDGE_GRAPH.md`](PROJECT_KNOWLEDGE_GRAPH.md)                       |
-| Decision defense | [`ARCHITECTURE_DEFENSE_GUIDE.md`](ARCHITECTURE_DEFENSE_GUIDE.md)                 |
-| Freeze (binding) | [`blueprint/ARCHITECTURE_FREEZE_v1.0.md`](blueprint/ARCHITECTURE_FREEZE_v1.0.md) |
-| Whitepaper       | [`WHITEPAPER_SENTINEL_SHIELD_AI.md`](WHITEPAPER_SENTINEL_SHIELD_AI.md)           |
+| Dig deeper       |                                                                                                      |
+| :--------------- | :--------------------------------------------------------------------------------------------------- |
+| System map       | [`docs/architecture/PROJECT_KNOWLEDGE_GRAPH.md`](docs/architecture/PROJECT_KNOWLEDGE_GRAPH.md)       |
+| Decision defense | [`docs/architecture/ARCHITECTURE_DEFENSE_GUIDE.md`](docs/architecture/ARCHITECTURE_DEFENSE_GUIDE.md) |
+| Freeze (binding) | [`blueprint/ARCHITECTURE_FREEZE_v1.0.md`](blueprint/ARCHITECTURE_FREEZE_v1.0.md)                     |
+| Whitepaper       | [`docs/mastery/WHITEPAPER_SENTINEL_SHIELD_AI.md`](docs/mastery/WHITEPAPER_SENTINEL_SHIELD_AI.md)     |
 
 ---
 
@@ -210,24 +210,54 @@ Source of truth: [`store/CERTIFICATION_STATUS.json`](store/CERTIFICATION_STATUS.
 | Iframes                 | Limited (`allFrames: false`)                            |
 | User “Allow anyway”     | Explicit residual — human override                      |
 
-Full matrix: [`UPDATED_LIMITATIONS.md`](UPDATED_LIMITATIONS.md)
+Full matrix: [`docs/security/UPDATED_LIMITATIONS.md`](docs/security/UPDATED_LIMITATIONS.md)
 
 ---
 
 ## Documentation
 
-| If you are…                     | Open this                                                                                                                         |
-| :------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------- |
-| Skimming for hiring / review    | This README · [`RELEASE_v0.3.0_INTERNAL_BETA.md`](RELEASE_v0.3.0_INTERNAL_BETA.md)                                                |
-| Challenging architecture        | [`ARCHITECTURE_DEFENSE_GUIDE.md`](ARCHITECTURE_DEFENSE_GUIDE.md)                                                                  |
-| Reading the engineering paper   | [`WHITEPAPER_SENTINEL_SHIELD_AI.md`](WHITEPAPER_SENTINEL_SHIELD_AI.md)                                                            |
-| Preparing a technical interview | [`TECHNICAL_INTERVIEW_BIBLE.md`](TECHNICAL_INTERVIEW_BIBLE.md) · [`INTERVIEW_DEFENSE_PLAYBOOK.md`](INTERVIEW_DEFENSE_PLAYBOOK.md) |
-| Running a live demo             | [`LIVE_DEMO_SCRIPT.md`](LIVE_DEMO_SCRIPT.md)                                                                                      |
-| Framing the portfolio           | [`PORTFOLIO_GUIDE.md`](PORTFOLIO_GUIDE.md)                                                                                        |
-| Index of mastery artifacts      | [`ENGINEERING_MASTERY_INDEX.md`](ENGINEERING_MASTERY_INDEX.md)                                                                    |
+All engineering reports live under **[`docs/`](docs/README.md)** (not the repo root).
+
+| If you are…                     | Open this                                                                                                                                                                             |
+| :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Browsing the docs tree          | [`docs/README.md`](docs/README.md)                                                                                                                                                    |
+| Skimming the milestone          | [`docs/release/RELEASE_v0.3.0_INTERNAL_BETA.md`](docs/release/RELEASE_v0.3.0_INTERNAL_BETA.md)                                                                                        |
+| Challenging architecture        | [`docs/architecture/ARCHITECTURE_DEFENSE_GUIDE.md`](docs/architecture/ARCHITECTURE_DEFENSE_GUIDE.md)                                                                                  |
+| Reading the engineering paper   | [`docs/mastery/WHITEPAPER_SENTINEL_SHIELD_AI.md`](docs/mastery/WHITEPAPER_SENTINEL_SHIELD_AI.md)                                                                                      |
+| Preparing a technical interview | [`docs/mastery/TECHNICAL_INTERVIEW_BIBLE.md`](docs/mastery/TECHNICAL_INTERVIEW_BIBLE.md) · [`docs/mastery/INTERVIEW_DEFENSE_PLAYBOOK.md`](docs/mastery/INTERVIEW_DEFENSE_PLAYBOOK.md) |
+| Running a live demo             | [`docs/mastery/LIVE_DEMO_SCRIPT.md`](docs/mastery/LIVE_DEMO_SCRIPT.md)                                                                                                                |
+| Framing the portfolio           | [`docs/mastery/PORTFOLIO_GUIDE.md`](docs/mastery/PORTFOLIO_GUIDE.md)                                                                                                                  |
+| Red-team / bypasses             | [`docs/red-team/BYPASS_DATABASE.md`](docs/red-team/BYPASS_DATABASE.md)                                                                                                                |
+| Known issues                    | [`docs/security/KNOWN_ISSUES.md`](docs/security/KNOWN_ISSUES.md)                                                                                                                      |
 
 Blueprint `PART_*` + `DESIGN_OWNERSHIP_MATRIX.md` own architecture.  
-`implementation_plan.md` is non-binding.
+`docs/sprints/implementation_plan.md` is non-binding.
+
+---
+
+## Repository layout
+
+```
+├── README.md                 ← you are here
+├── CHANGELOG.md
+├── SECURITY.md
+├── blueprint/                ← architecture freeze & PART_* specs
+├── docs/                     ← all engineering reports (organized)
+│   ├── architecture/
+│   ├── release/
+│   ├── validation/
+│   ├── excellence/
+│   ├── red-team/
+│   ├── phases/
+│   ├── sprints/
+│   ├── security/
+│   ├── performance/
+│   ├── quality/
+│   └── mastery/
+├── packages/                 ← source code
+├── store/                    ← certification & CWS packaging
+└── tools/                    ← eval, red-team, benches, CI helpers
+```
 
 ---
 

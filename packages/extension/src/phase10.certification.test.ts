@@ -27,7 +27,9 @@ describe('Phase 10 — production certification artifacts', () => {
   it('ships certification matrix + machine-readable status', () => {
     expect(existsSync(join(storeRoot, 'PRODUCTION_CERTIFICATION.md'))).toBe(true);
     expect(existsSync(join(storeRoot, 'CERTIFICATION_STATUS.json'))).toBe(true);
-    expect(existsSync(join(repoRoot, 'PHASE_10_VERIFICATION_PLAN.md'))).toBe(true);
+    expect(existsSync(join(repoRoot, 'docs', 'phases', 'PHASE_10_VERIFICATION_PLAN.md'))).toBe(
+      true,
+    );
   });
 
   it('status JSON encodes dual verdict and refuses CWS authorize', () => {
@@ -80,16 +82,17 @@ describe('Phase 10 — Freeze G0–G5 evidence anchors', () => {
   });
 
   it('prior phase reports 01–09 exist (rollup evidence)', () => {
+    const phasesDir = join(repoRoot, 'docs', 'phases');
     for (let n = 1; n <= 9; n += 1) {
       const id = String(n).padStart(2, '0');
-      expect(existsSync(join(repoRoot, `PHASE_${id}_REPORT.md`)), `PHASE_${id}_REPORT.md`).toBe(
+      expect(existsSync(join(phasesDir, `PHASE_${id}_REPORT.md`)), `PHASE_${id}_REPORT.md`).toBe(
         true,
       );
     }
   });
 
   it('KI-018 public blocker and KI-001 closure are acknowledged in KNOWN_ISSUES', () => {
-    const known = readFileSync(join(repoRoot, 'KNOWN_ISSUES.md'), 'utf8');
+    const known = readFileSync(join(repoRoot, 'docs', 'security', 'KNOWN_ISSUES.md'), 'utf8');
     expect(known).toMatch(/KI-001/);
     expect(known).toMatch(/Closed/i);
     expect(known).toMatch(/KI-018/);

@@ -343,5 +343,9 @@ lines.push('- Explain Phase B→C eval deltas including ROT13 drop.');
 lines.push('- Demo HOLD on binary as a success case.');
 lines.push('');
 
-writeFileSync(join(root, 'INTERVIEW_DEFENSE_PLAYBOOK.md'), lines.join('\n'), 'utf8');
+writeFileSync(
+  join(root, 'docs', 'mastery', 'INTERVIEW_DEFENSE_PLAYBOOK.md'),
+  lines.join('\n'),
+  'utf8',
+);
 console.log('sessions', all.length);

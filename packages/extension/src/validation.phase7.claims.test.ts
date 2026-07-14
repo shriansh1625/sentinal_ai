@@ -119,7 +119,7 @@ describe('Lab P7 — store assets residual (KI-017)', () => {
       expect(pngs.some((n) => n.includes('popup'))).toBe(true);
       expect(pngs.some((n) => n.includes('options'))).toBe(true);
     }
-    const known = readFileSync(join(repoRoot, 'KNOWN_ISSUES.md'), 'utf8');
+    const known = readFileSync(join(repoRoot, 'docs', 'security', 'KNOWN_ISSUES.md'), 'utf8');
     expect(known).toMatch(/KI-017/);
   });
 });

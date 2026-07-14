@@ -362,6 +362,6 @@ lines.push('');
 lines.push(`**Total questions:** ${n}`);
 lines.push('');
 
-const outPath = join(root, 'TECHNICAL_INTERVIEW_BIBLE.md');
+const outPath = join(root, 'docs', 'mastery', 'TECHNICAL_INTERVIEW_BIBLE.md');
 writeFileSync(outPath, lines.join('\n'), 'utf8');
 console.log(`wrote ${n} questions -> ${outPath}`);
